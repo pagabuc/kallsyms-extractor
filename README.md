@@ -26,7 +26,7 @@ The only dependency of this tool is Unicorn. To install it you can `pip3 install
     python3 kallsyms.py path/to/dump.raw
 ```
 
-At the moment only raw memory dumps supported. If you have any other type of dump you can convert it to raw format using volatility's [imagecopy](https://github.com/volatilityfoundation/volatility/wiki/Command-Reference#imagecopy)
+At the moment only raw memory dumps are supported. If you have any other type of dump you can convert it to raw format using volatility's [imagecopy](https://github.com/volatilityfoundation/volatility/wiki/Command-Reference#imagecopy).
 
 ### Limitations and Future Work:
 
