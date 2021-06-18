@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 
-from unicorn_magic import extract_symbols
+if __package__:
+    from .unicorn_magic import extract_symbols
+else:
+    from unicorn_magic import extract_symbols
+
 import tempfile
 import struct
 import mmap
