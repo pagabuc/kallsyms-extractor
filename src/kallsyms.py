@@ -16,7 +16,7 @@ THRESHOLD_KALLSYMS = 2000
 # physical address of "kallsyms_on_each_symbol".
 
 # KASLR randomizes at the page granularity, so page offsets are
-# not changed. For this reason, we can search in the symtab all those entries that
+# not changed. For this reason, we can search in the ksymtab all those entries that
 # have a name value with the same page offset of the string. At this point
 # we know 3 elements of the equation: value_va - name_va =
 # value_pa - name_pa and thus we can find value_pa (the physical
@@ -24,7 +24,10 @@ THRESHOLD_KALLSYMS = 2000
 
 def read_str(dump, address):
     end  = dump[address:address+1024].index(b'\x00')
-    return dump[address:address+end].decode('utf-8')
+    try:
+        return dump[address:address+end].decode('utf-8')
+    except UnicodeError:
+        return ""
 
 def save_kallsyms(results_dir, ksyms, va, pa):
     filename = os.path.join(results_dir, hex(pa))
@@ -52,16 +55,30 @@ def extract_kallsyms(dump):
 
 # Value can also be a per_cpu pointer, thus the check if is less than 0x100000
 def is_valid_entry(value, name):
-    return name >= 0xffffffff80000000 and (0xffffffff80000000 <= value < 0xffffffffffffffff or value <= 0x100000)
+    return (name >= 0xffffffff80000000) and (0xffffffff80000000 <= value < 0xffffffffffffffff or value <= 0x100000)
 
-def find_candidate_ksymtab(dump):
+# Offset is needed because the ksymtab can start at 0xXXXX8.
+def find_candidate_ksymtab(dump, offset=0, namespace=False):
     ksymtab = []
-    size = dump.size()
-    for i in range(0, size, 16):
-        if i % 1000000 == 0:
-            sys.stderr.write('\rDone %.2f%%' % ((i)/size*100))
+    if namespace:
+        ksymbol_fmt  = "<QQQ"
+        ksymbol_size = 24
+    else:
+        ksymbol_fmt  = "<QQ"
+        ksymbol_size = 16
 
-        value, name = struct.unpack("<QQ", dump[i:i+16])
+    print("\n[~] Finding candidate ksymtab (offset: %d, namespace=%s)" % (offset, namespace))
+
+    for i in range(offset, dump.size(), ksymbol_size):
+        if i % 1000000 == offset:
+            sys.stderr.write('\rDone %.2f%%' % ((i)/dump.size()*100))
+
+        try:
+            ksymbol     = dump[i:i+ksymbol_size]
+            value, name = struct.unpack(ksymbol_fmt, ksymbol)[:2]
+        except struct.error:
+            return
+
         if is_valid_entry(value, name):
             ksymtab.append((value, name))
             continue
@@ -94,7 +111,13 @@ def find_kallsyms_on_each_symbol_function(dump):
     for name_pa in name_pas:
         print("[+] Candidate kallsyms_on_each_symbol string found @ 0x%x" % name_pa)
 
-    for ksymtab in find_candidate_ksymtab(dump):
+    ksymtabs = []
+    ksymtabs += list(find_candidate_ksymtab(dump))
+    ksymtabs += list(find_candidate_ksymtab(dump, offset=8))
+    ksymtabs += list(find_candidate_ksymtab(dump, namespace=True))
+    ksymtabs += list(find_candidate_ksymtab(dump, offset=8, namespace=True))
+
+    for ksymtab in ksymtabs:
         print("\n[+] Found a potential ksymtab with: %d elements" % len(ksymtab))
         for value_va, name_va, name_pa in get_entries_with_name_offset(ksymtab, name_pas):
             value_pa = (value_va - name_va) + name_pa

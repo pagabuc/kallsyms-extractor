@@ -29,7 +29,7 @@ def hook_code64(uc, address, size, user_data):
         uc.emu_stop()
         return
 
-    # print(">>> Tracing instruction at 0x%x, callback at 0x%x %d" % (address, callback_addr, COUNTER))
+    # print(">>> Tracing instruction at 0x%x, callback at 0x%x %d" % (address, callback_addr, _INSTRUCTION_COUNTER))
     if address == callback_addr:
         sym_name = read_str(uc, uc.reg_read(UC_X86_REG_RSI)).decode("utf-8")
         sym_address = int(uc.reg_read(UC_X86_REG_RCX))
@@ -44,10 +44,10 @@ def extract_symbols(dump, kallsyms_on_each_va, kallsyms_on_each_pa):
     ksyms = []
     mu = Uc(UC_ARCH_X86, UC_MODE_64)
 
-    # We read 16mb before and 16mb after, is should be enough to cover all the kernel .text and data.
-    load_va = align_page(kallsyms_on_each_va - 2**24)
-    load_pa = align_page(kallsyms_on_each_pa - 2**24)
-    mem = dump[load_pa:load_pa+2**25]
+    # We read 16mb before and 64mb after kallsyms_on_each_symbols, is should be enough to cover all the kernel .text and data.
+    load_va = align_page(kallsyms_on_each_va - min(kallsyms_on_each_pa, 2**24))
+    load_pa = align_page(kallsyms_on_each_pa - min(kallsyms_on_each_pa, 2**24))
+    mem     = dump[load_pa:load_pa+2**26]
 
     mu.mem_map(load_va, len(mem))
     mu.mem_write(load_va, mem)

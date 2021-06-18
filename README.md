@@ -34,8 +34,6 @@ First of all, this works only if the kernel was compiled with CONFIG_MODULES - o
 
 Moreover, the latest versions of the kernel introduced CONFIG_HAVE_ARCH_PREL32_RELOCATIONS. This makes everything more tricky because the fields of `struct kernel_symbol` are not virtual addresses anymore but only offsets. Therefore, while we can still find the physical address of the function in the dump but we don't know its virtual address. I have the strong feeling that by analyzing the code of the function we can still find the correct virtual address (maybe with some small bruteforcing involved?). Ping me if you are interested in working on this!
 
-Moreover the definition of `kernel_symbol` changed recently and now it contains also a `namespace` field. The tool should work nevertheless, but it wasn't tested on this new kernels yet.
-
 Finally, `kallsyms_on_each_symbols` also lists the symbols exported from kernel modules (it calls `module_kallsyms_on_each_symbol`). The problem here is that the memory containing this information must be correctly loaded in the emulator (the modules area is not contiguous to the kernel code, so extracting more memory from the dump is not enough). But from the ksymtab we know where `init_level4_pgt` or `init_top_pgt` are - so we could walk the page tables and set everything up correctly in the Unicorn emulator!
 
 ### References
