@@ -25,6 +25,7 @@ def hook_code64(uc, address, size, user_data):
 
     # So we executed more than 10**6 instructions and found less than 10 kallsyms? Probably not the correct function.
     if len(ksyms) < 10 and _INSTRUCTION_COUNTER > 10000000:
+        _INSTRUCTION_COUNTER = 0
         uc.emu_stop()
         return
 
@@ -60,7 +61,10 @@ def extract_symbols(dump, kallsyms_on_each_va, kallsyms_on_each_pa):
     STACK_SIZE = 0x100000
     mu.mem_map(STACK - STACK_SIZE, STACK)
     mu.reg_write(UC_X86_REG_RSP, STACK)
-    mu.reg_write(UC_X86_REG_GS, 0x1000)
+    try:
+        mu.reg_write(UC_X86_REG_GS, 0x1000)
+    except unicorn.UcError:
+        pass
 
     # Inject our fake callback function, which consists only of a ret
     callback_addr = load_va
